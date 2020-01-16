@@ -48,7 +48,7 @@ class RNNCell(nn.Module):
         self.U = nn.Linear(inp_size, hid_size, bias=bias)
         self.i_initializer = i_initializer
 
-        self.V = nn.Linear(hid_size, hid_size)
+        self.V = nn.Linear(hid_size, hid_size, bias=False)
 
         self.r_initializer = r_initializer
         self.reset_parameters()
@@ -62,7 +62,8 @@ class RNNCell(nn.Module):
             self.V.weight.data = self._B(
                 torch.as_tensor(self.r_initializer(self.hidden_size)))
         else:
-            self.i_initializer(self.V.weight.data)
+            print('other')
+            self.r_initializer(self.V.weight.data)
 
     def _A(self,gradients=False):
         A = self.V.weight.data
@@ -89,7 +90,7 @@ class RNNCell(nn.Module):
 
 
 class OrthoRNNCell(nn.Module):
-    def __init__(self,inp_size,hid_size,nonlin,bias=True,cuda=False,r_initializer=henaff_init,i_initializer=nn.init.xavier_normal_):
+    def __init__(self,inp_size,hid_size,nonlin,bias=False,cuda=False,r_initializer=henaff_init,i_initializer=nn.init.xavier_normal_):
         super(OrthoRNNCell,self).__init__()
         self.cudafy = cuda
         self.hidden_size = hid_size
@@ -124,6 +125,7 @@ class OrthoRNNCell(nn.Module):
         self.UppT = UppT
         self.UppT = nn.Parameter(self.UppT)
         self.M = torch.triu(torch.ones_like(self.UppT),diagonal=1)
+        self.D = torch.zeros_like(self.UppT)
 
 
         # Create rotations and mask M for *.3 and *.4
@@ -191,7 +193,6 @@ class OrthoRNNCell(nn.Module):
         return h
 
     def calc_rec(self):
-
         self.calc_D()
         self.calc_alpha_block()
         self.rec = torch.matmul(torch.matmul(self.P,torch.mul(self.UppT,self.M)+torch.mul(self.alpha_block,self.D)),self.P.t())
